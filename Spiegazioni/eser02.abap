@@ -34,25 +34,33 @@ DATA: v_count2 TYPE i,
 
 
 
+
 START-OF-SELECTION.
 
   st_Adrc-addrnumber = '70127'.
-  st_adrc-city1 = 'Bari'.
+  st_adrc-city1 = 'Napoli'.
   st_adrc-name1 = 'Gaet'.
 
   APPEND st_adrc TO tb_adrc.
+  CLEAR st_adrc. "pulisce le st_adrc
 
   st_Adrc-addrnumber = '70126'.
-  st_adrc-city1 = 'Bari, s. spirito'.
+  st_adrc-city1 = 'Bari'.
   st_adrc-name1 = 'Gaetano'.
 
   APPEND st_adrc TO tb_adrc.
+  CLEAR st_adrc.
 
-  LOOP AT tb_adrc INTO st_adrc.
+  LOOP AT tb_adrc INTO st_adrc WHERE city1 = 'Napoli'. "loop inserisce solo Napoli.
+*    IF st_adrc-city1 = 'Roma'. " se città roma salta l'inserimento nella tab.
+*      CONTINUE.  "Torna alla riga del loop
+*    ENDIF.
     WRITE: 'Address: ', st_adrc-addrnumber, /.
     WRITE: 'Name: ', st_adrc-city1, /.
     WRITE: 'City: ', st_adrc-name1, /.
 *    EXIT.  fuori loop
+
+
   ENDLOOP.
 
 
