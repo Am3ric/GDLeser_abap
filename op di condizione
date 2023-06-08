@@ -1,0 +1,54 @@
+1	
+
+CO (Contains Only)
+
+Checks whether A is solely composed of the characters in B.
+
+
+2	
+
+CN (Not Contains ONLY)
+
+Checks whether A contains characters that are not in B.
+
+
+3	
+
+CA (Contains ANY)
+
+Checks whether A contains at least one character of B.
+
+
+4	
+
+NA (NOT Contains Any)
+
+Checks whether A does not contain any character of B.
+
+
+5	
+
+CS (Contains a String)
+
+Checks whether A contains the character string B.
+
+
+6	
+
+NS (NOT Contains a String)
+
+Checks whether A does not contain the character string B.
+
+
+7	
+
+CP (Contains a Pattern)
+
+It checks whether A contains the pattern in B.
+
+
+8	
+
+NP (NOT Contains a Pattern)
+
+It checks whether A does not contain the pattern in B.
