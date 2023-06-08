@@ -89,6 +89,11 @@ START-OF-SELECTION.
 
   WRITE v_count.
 
+" stringhe 
+  CONCATENATE pvalue p_value2  INTO p_value1 separated by space. "concatena stringhe e aggiunge spazio o anche ''
+  
+  p_value = p_value+8(5). "si sposta di tot caratteri e prende i successivi tot
+
 
 * ciclo do + write con spazi e var
   v_count = strlen( p_value ).
