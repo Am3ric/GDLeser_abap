@@ -1,0 +1,71 @@
+STANDARD: strumento fornito dalla SAP (es:s11 è una transazione standard). S11 ci permette di creare oggetti del data dictionary
+come le tabelle, le view, i types e i domains. Le tabelle sono quelle più usate.
+
+CUSTOM: le transazioni che creiamo noi per customizzare il sistema. Hanno come primo carattere la z. Qualsiasi oggetto
+che inizia per z è un oggetto custom, creato da un programmatore e non previsto da SAP. 
+
+RADIOB: sequenza di variabili di lunghezza 1, valorizzata o meno, e può essere valorizzata solo una di esse.
+(sequenza di radiob). Non puoi avere un valore nullo. Una selezione deve essere sempre presente. Non posso selezionare più voci.
+
+La CHECK BOX è il contrario. Posso avere più selezioni.
+
+Quando vogliamo creare una tabella, creiamo lo schema della tabella.
+
+TABELLE TRASPARENTI: un concetto, uno schema.
+
+I tipi di dati: tipo C (caratteri), tipo N (numerico di tipo testo, contiene solo numeri, come il CAP, quindi è un formato
+che non viene utilizzato per calcoli), D (data), T (ora).
+
+TIPI DI DATI NUMERICI:
+- INTERI
+- 
+- 
+
+CON DISPLAY POSSIAMO VISUALIZZARE LA STRUTTURA DELLA TABELLA.
+OGNI TABELLA DEVE AVERE UNA O PIU' CHIAVI UNIVOCHE. 
+
+una tabella senza mandante è una tabella SOVRAMANDANTE, cioè può andare su tutti i mandanti.
+Mandante 100 in basso a destra. Per visualizzare la transizione, metto l'opzione transazione. 
+La tab consegna e aggiornamento ha tante lettere, che sono le classi.
+CLASSE A: tabella per applicazioni, dati anagrafici e in movimento. Sia dati che sono fissi che dati che si aggiornano in continuazione. Ha dati di tipo master e di tipo trasparent,
+cioè sia quelli che rimangono uguali nel tempo o quelli che si modificano contemporaneamente.
+CLASSE C: tabella di customizing utili al cliente per settaggi di tipo applicativo. Ogni sera, per il mese di gennaio, il cliente aggiornerà la tabella. La tabella
+di customizing deve essere valorizzata per l'area per il cliente stesso. 
+
+La delivery class (classe di consegna) può essere di tipo A o C.
+APPL0: dati anagrafici.
+APPL1: dati di magazzino, di vendita.
+
+Size Category: se una tabella contiene tutte le regioni di italia, metto 0, che da la possibilità di inserire fino a 100000 elementi.E' la dimensione degli elementi.
+
+Il dominio fornisce un ulteriore campo, come il genere: sesso: uomo/donno.
+
+SELECTION OPTION: "to" vuol dire raccogliere un intervallo di record di input in un certo range di input
+
+MULTIPLE SELECTION: 
+
+scrivere l'editor di un codice abap IN SE38
+chiedere la convenzione che il cliente adatta per una particolare tabella. STIT+CODICE IDENTIFICATIVO = ITALIA
+
+Un sistema sap è composto da ambienti, ovvero da una landscape.L'utente finale lavora su un ambiente produttivo, dati delicati, informazioni reali con cui un'azienda
+ci guadagna. 
+Ci sono 3 ambienti: sviluppo, test e produzione.
+Se imposto il locale, il programma che realizzo rimane solo nell'ambiente in cui l'ho creato.
+LOCAL OBJECT = NON SI PREVEDE NESSUN TRANSPORTO. ALTRIMENTI, SCELGO UNA CR.
+
+Vado prima in uambiente di test in cui posso ancora sbagliare.
+s38 = ci consente di editare il codice con programma abap. anche i codici devono essere attivati. sap considera solo l'ultima versione attiva disponibile.
+CONTROL D PER CREARE SPAZI NUOVI NEL CODICE.
+
+PER I COMMENTI:
+* COMMENTO
+OPPURE INIZIO CON "
+
+CONTROL SHIFT MAGGIORE E  CONTROL MAGGIORE PER COMMENTARE E DECOMMENTARE
+OGNI VARIABILE DEVE AVERE UN NOME UNIVOCO.  ESISTONO DELLE CONVENZIONI IN SAP PER QUESTO.
+
+
+
+
+
+ 
