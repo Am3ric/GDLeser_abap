@@ -10,7 +10,7 @@ START-OF-SELECTION.
 
 
   IF p_str CA '0123456789'.
-    WRITE 'ci sono numeri'.
+    WRITE 'ci sono numeri'. "oppure usare MESSAGE numero(classe)
 
   ELSE.
     WRITE 'non ci sono numeri'.
