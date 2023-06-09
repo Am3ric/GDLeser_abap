@@ -1,6 +1,10 @@
 INCLUDE zgdleser_top."contiente le dichiarazioni
 INCLUDE zgdleser_screen. "contiene la screen
-PERFORM esempio1. "funzione
+INCLUDE zgdleser_form. "contiene funzioni 
+PERFORM esempio1. "richiamo funzione
+
+
+
 
 
 "funzione
