@@ -7,7 +7,7 @@
 *&---------------------------------------------------------------------*
 REPORT zgdleser_03.
 
-TABLES zgdl. "richiamo tabellae i campi contenuti
+TABLES zgdl. "richiamo tabella e i campi contenuti
 
 *INITIALIZATION.
 
