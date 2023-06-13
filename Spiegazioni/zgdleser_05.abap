@@ -23,11 +23,10 @@ START-OF-SELECTION.
   SELECT *
       FROM ever
       INTO TABLE i_ever
-      "FOR ALL ENTRIES IN i_eanl
       WHERE vertrag IN s_ver . "AND
-  "anlage  = i_eanl-anlage.
 
   IF sy-subrc = 0.
+    DATA lv_default(10).
     DATA lt_ever_per LIKE STANDARD TABLE OF wa_ever.
     REFRESH lt_ever_per.
     lt_ever_per[] = i_ever[].
@@ -39,10 +38,56 @@ START-OF-SELECTION.
         INTO TABLE i_eanl
         FOR ALL ENTRIES IN lt_ever_per
         WHERE anlage = lt_ever_per-anlage.
-    "WHERE anlage IN s_anl.
+
     IF sy-subrc = 0.
+      DATA: BEGIN OF wa_anl,
+              sign   TYPE tvarv_sign,
+              option TYPE tvarv_opti,
+              low    TYPE anlage,
+              high   TYPE anlage,
+            END OF wa_anl,
+            i_anl LIKE STANDARD TABLE OF wa_anl.
+
+      i_anl[] = s_anl[].
+      DATA lv_tabix LIKE sy-tabix.
+
+      LOOP AT i_eanl INTO wa_eanl.
+
+        lv_tabix = sy-tabix.
+
+        READ TABLE i_anl INTO wa_anl
+        WITH KEY sign = 'E'
+                 low = wa_eanl-anlage.
+        IF sy-subrc = 0.
+          DELETE i_eanl INDEX lv_tabix.
+        ENDIF.
+      ENDLOOP.
+    ELSE.
+      lv_default = 'null'.
     ENDIF.
     FREE lt_ever_per.
+
+
+    WRITE: / ' Contratto', '|', '  Impianto', '|', '   Data In', '|', '  Edificio'.
+    ULINE.
+    LOOP AT i_ever INTO wa_ever.
+
+
+      READ TABLE i_eanl INTO wa_eanl
+      WITH KEY anlage = wa_ever-anlage.
+      IF sy-subrc = 0.
+
+        WRITE: / wa_ever-vertrag, '|', wa_eanl-anlage, '|', wa_ever-einzdat, '|', wa_eanl-vstelle.
+
+      ELSE.
+
+        WRITE: / wa_ever-vertrag, '|',lv_default, '|', wa_ever-einzdat, '|',lv_default.
+
+      ENDIF.
+
+
+    ENDLOOP.
+
   ENDIF.
 
 end-of-selection.
