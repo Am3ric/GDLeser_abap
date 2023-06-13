@@ -14,8 +14,6 @@ DATA: i_ever LIKE STANDARD TABLE OF wa_ever,
 SELECT-OPTIONS: s_anl FOR wa_eanl-anlage,
                 s_ver FOR wa_ever-vertrag.
 
-
-
 * MAIN
 
 START-OF-SELECTION.
@@ -55,11 +53,20 @@ START-OF-SELECTION.
 
         lv_tabix = sy-tabix.
 
-        READ TABLE i_anl INTO wa_anl
+        READ TABLE i_anl INTO wa_anl " Eliminazione Impianto se pilotato da SO
         WITH KEY sign = 'E'
                  low = wa_eanl-anlage.
         IF sy-subrc = 0.
           DELETE i_eanl INDEX lv_tabix.
+          lv_default = 'null'.
+        ELSE.
+          READ TABLE i_anl INTO wa_anl " Eliminazione Impianto se pilotato da SO
+          WITH KEY sign = 'I'
+                   low = wa_eanl-anlage.
+          IF sy-subrc <> 0.
+            DELETE i_eanl INDEX lv_tabix.
+            lv_default = 'null'.
+          ENDIF.
         ENDIF.
       ENDLOOP.
     ELSE.
@@ -72,22 +79,15 @@ START-OF-SELECTION.
     ULINE.
     LOOP AT i_ever INTO wa_ever.
 
-
       READ TABLE i_eanl INTO wa_eanl
       WITH KEY anlage = wa_ever-anlage.
       IF sy-subrc = 0.
-
         WRITE: / wa_ever-vertrag, '|', wa_eanl-anlage, '|', wa_ever-einzdat, '|', wa_eanl-vstelle.
-
       ELSE.
-
         WRITE: / wa_ever-vertrag, '|',lv_default, '|', wa_ever-einzdat, '|',lv_default.
-
       ENDIF.
 
-
     ENDLOOP.
-
   ENDIF.
 
 end-of-selection.
