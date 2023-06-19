@@ -1,0 +1,155 @@
+REPORT z_rg_eser_10.
+
+TABLES: ever, eanl.
+
+DATA: wa_ever LIKE ever,
+      wa_eanl LIKE eanl.
+
+DATA: BEGIN OF wa_output,
+        vertrag  LIKE ever-vertrag,
+        anlage   LIKE eanl-anlage,
+        einzdat  LIKE ever-einzdat,
+        vstelle  LIKE eanl-vstelle,
+        nota(50),
+      END OF wa_output.
+
+DATA: i_output LIKE STANDARD TABLE OF wa_output,
+      i_ever   LIKE STANDARD TABLE OF wa_ever,
+      i_eanl   LIKE STANDARD TABLE OF wa_eanl.
+
+SELECT-OPTIONS: s_anl FOR wa_eanl-anlage,
+                s_ver FOR wa_ever-vertrag.
+
+* MAIN
+
+START-OF-SELECTION.
+
+  SELECT *
+      FROM ever
+      INTO TABLE @i_ever
+      WHERE vertrag IN @s_ver. "AND
+
+  IF sy-subrc = 0.
+    DATA lv_default(10).
+    DATA lt_ever_per LIKE STANDARD TABLE OF wa_ever.
+    REFRESH lt_ever_per.
+    lt_ever_per[] = i_ever[].
+    SORT lt_ever_per BY anlage.
+    DELETE ADJACENT DUPLICATES FROM lt_ever_per COMPARING anlage.
+
+    SELECT *
+        FROM eanl
+        INTO TABLE @i_eanl
+        FOR ALL ENTRIES IN @lt_ever_per
+        WHERE anlage = @lt_ever_per-anlage.
+
+    IF sy-subrc = 0.
+
+      IF NOT s_anl[] IS INITIAL.
+        DATA: BEGIN OF wa_anl,
+                sign   TYPE tvarv_sign,
+                option TYPE tvarv_opti,
+                low    TYPE anlage,
+                high   TYPE anlage,
+              END OF wa_anl,
+              i_anl LIKE STANDARD TABLE OF wa_anl.
+
+        i_anl[] = s_anl[].
+        DATA lv_tabix LIKE sy-tabix.
+
+        LOOP AT i_eanl INTO wa_eanl.
+
+          lv_tabix = sy-tabix.
+
+          READ TABLE i_anl INTO wa_anl " Eliminazione Impianto se pilotato da SO
+          WITH KEY sign = 'E'
+                   low = wa_eanl-anlage.
+          IF sy-subrc = 0.
+            DELETE i_eanl INDEX lv_tabix.
+            lv_default = 'null'.
+            DELETE i_ever WHERE anlage = wa_eanl-anlage.
+          ELSE.
+            READ TABLE i_anl INTO wa_anl " Eliminazione Impianto se pilotato da SO
+            WITH KEY "sign = 'I'
+                     low = wa_eanl-anlage.
+            IF sy-subrc = 0.
+              IF wa_anl-sign <> 'I'.
+                DELETE i_eanl INDEX lv_tabix.
+                lv_default = 'null'.
+                DELETE i_ever WHERE anlage = wa_eanl-anlage.
+              ENDIF.
+            ELSE.
+              "DELETE i_eanl INDEX lv_tabix.
+              "lv_default = 'null'.
+            ENDIF.
+          ENDIF.
+        ENDLOOP.
+      ELSE.
+        lv_default = 'null'.
+      ENDIF.
+      FREE lt_ever_per.
+    ENDIF.
+
+    FIELD-SYMBOLS: <fs_ever> LIKE wa_ever,
+                   <fs_eanl> LIKE wa_eanl.
+
+    CLEAR wa_output.
+    REFRESH i_output.
+    LOOP AT i_ever ASSIGNING <fs_ever>.
+      "LOOP AT i_ever ASSIGNING <fs_ever>.
+      "INTO wa_ever.
+
+      wa_output-vertrag = <fs_ever>-vertrag.
+      wa_output-einzdat = <fs_ever>-einzdat.
+
+      READ TABLE i_eanl ASSIGNING <fs_eanl>
+      "INTO wa_eanl
+      WITH KEY anlage = <fs_ever>-anlage.
+      IF sy-subrc = 0.
+        wa_output-anlage  = <fs_eanl>-anlage.
+        wa_output-vstelle = <fs_eanl>-vstelle.
+      ELSE.
+        wa_output-anlage  = <fs_ever>-anlage.
+        wa_output-vstelle = 'Null'.
+      ENDIF.
+
+      IF wa_output-anlage IS INITIAL.
+        wa_output-anlage = 'Null'.
+      ENDIF.
+
+      APPEND wa_output TO i_output.
+      CLEAR wa_output.
+
+    ENDLOOP.
+
+    IF NOT i_output IS INITIAL.
+      SORT i_output BY vertrag anlage.
+      WRITE: / ' Contratto', '|', '  Impianto', '|', '   Data In', '|', '  Edificio'.
+      ULINE.
+      LOOP AT i_output ASSIGNING FIELD-SYMBOL(<fs_out>).
+        "INTO wa_output.
+
+        WRITE: / <fs_out>-vertrag, '|', <fs_out>-anlage, '|',<fs_out>-einzdat, '|', <fs_out>-vstelle.
+
+        IF <fs_out>-vstelle = 'Null'.
+          <fs_out>-nota = 'KO'.
+        ENDIF.
+
+      ENDLOOP.
+
+      DATA lv_count(4). "TYPE n.
+      CLEAR lv_count.
+      LOOP AT i_output ASSIGNING <fs_out>. "FIELD-SYMBOL(<fs_out2>).
+        IF <fs_out>-nota = 'KO'.
+          ADD 1 TO lv_count.
+          "lv_count = lv_count + 1.
+        ENDIF.
+      ENDLOOP.
+      IF NOT lv_count IS INITIAL.
+        ULINE.
+        WRITE: / 'IL numero di record errati è: ' , lv_count.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+end-of-selection
