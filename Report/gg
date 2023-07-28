@@ -1,0 +1,551 @@
+*&---------------------------------------------------------------------*
+*& Include          ZGBCCARICAMB_FORM
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form loc file_file
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM loc_file .
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      filename                = lv_file
+      filetype                = 'ASC'
+      has_field_separator     = ';'
+    TABLES
+      data_tab                = gt_file
+    EXCEPTIONS
+      file_open_error         = 1
+      file_read_error         = 2
+      no_batch                = 3
+      gui_refuse_filetransfer = 4
+      invalid_type            = 5
+      no_authority            = 6
+      unknown_error           = 7
+      bad_data_format         = 8
+      header_not_allowed      = 9
+      separator_not_allowed   = 10
+      header_too_long         = 11
+      unknown_dp_error        = 12
+      access_denied           = 13
+      dp_out_of_memory        = 14
+      disk_full               = 15
+      dp_timeout              = 16
+      OTHERS                  = 17.
+
+  IF sy-subrc <> 0.
+    MESSAGE s208(00) WITH TEXT-e02 DISPLAY LIKE 'E'.
+    STOP.
+  ELSE.
+
+    LOOP AT gt_file INTO gs_file.
+      lv_tabx = sy-tabix.
+      lv_tabx += 1.
+      IF sy-tabix EQ 1.
+        PERFORM check_header.
+      ELSE.
+        PERFORM check_rows.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form serv_file
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM serv_file .
+
+  OPEN DATASET lv_file FOR INPUT IN TEXT MODE ENCODING DEFAULT.
+  IF sy-subrc IS INITIAL.
+    DO.
+      READ DATASET lv_file INTO gs_file.
+      IF sy-subrc IS INITIAL.
+        IF sy-tabix EQ 1.
+          PERFORM check_header.
+        ELSE.
+          PERFORM check_rows.
+        ENDIF.
+      ENDIF.
+    ENDDO.
+
+    CLOSE DATASET lv_file.
+  ENDIF.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_header
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_header.
+
+  SPLIT gs_file AT ';'
+       INTO
+       ls_head-idtreno
+       ls_head-ext_ui
+       ls_head-begabrpe
+       ls_head-endabrpe
+       ls_head-belzart
+       ls_head-zonennr
+       ls_head-preisbtr
+       ls_head-abrmenge
+       ls_head-mwskz.
+  TRANSLATE ls_head TO UPPER CASE.
+
+  IF ls_head-idtreno <> 'IDTRENO'   AND
+  ls_head-ext_ui     <> 'EXT_UI'    AND
+  ls_head-begabrpe   <> 'BEGABRPE'  AND
+  ls_head-endabrpe   <> 'ENDABRPE'  AND
+  ls_head-belzart    <> 'BELZART'   AND
+  ls_head-zonennr    <> 'ZONENNR'   AND
+  ls_head-preisbtr   <> 'PREISBTR'  AND
+  ls_head-abrmenge   <> 'ABRMENGE'  AND
+  ls_head-mwskz      <> 'MWSKZ'.
+
+    MESSAGE i013(zgbc_mess) DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_rows
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_rows .
+
+  DATA: l_rc       TYPE sy-subrc,
+        ls_message TYPE bapiret2.
+
+  SPLIT gs_file AT ';'
+  INTO
+  gs_csv-idtreno
+  gs_csv-ext_ui
+  gs_csv-begabrpe
+  gs_csv-endabrpe
+  gs_csv-belzart
+  gs_csv-zonennr
+  gs_csv-preisbtr
+  gs_csv-abrmenge
+  gs_csv-mwskz.
+
+  TRANSLATE gs_csv TO UPPER CASE.
+
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      input  = gs_csv-idtreno
+    IMPORTING
+      output = gs_csv-idtreno.
+
+
+  PERFORM check_date_param USING gs_csv-begabrpe
+                          CHANGING l_rc
+                                   ls_message.
+  IF l_rc IS NOT INITIAL.
+
+    err_count += 1.
+    MOVE: err_count TO gs_err-progr.
+    MOVE-CORRESPONDING gs_csv TO gs_err.
+    gs_err-err_number = ls_message-number.
+    gs_err-err_type = 'E'.
+    gs_err-data = sy-datum.
+    gs_err-ora = sy-uzeit.
+    gs_err-err_id = ls_message-id.
+    gs_err-err_row = lv_tabx.
+    gs_err-icon = '@5C@'.
+    APPEND gs_err TO gt_err.
+    CLEAR: gs_err.
+
+  ENDIF.
+
+  PERFORM check_date_param USING gs_csv-endabrpe
+                          CHANGING l_rc
+                                   ls_message.
+  IF l_rc IS NOT INITIAL.
+
+    err_count += 1.
+    MOVE: err_count TO gs_err-progr.
+    MOVE-CORRESPONDING gs_csv TO gs_err.
+    gs_err-err_number = ls_message-number.
+    gs_err-err_type = 'E'.
+    gs_err-err_id = ls_message-id.
+    gs_err-err_row = lv_tabx.
+    gs_err-icon = '@5C@'.
+    APPEND gs_err TO gt_err.
+    CLEAR: gs_err.
+
+  ENDIF.
+
+
+  IF gs_csv-idtreno  CO '1234567890 ' AND
+     gs_csv-zonennr  CO '0123456789 ' AND
+     gs_csv-preisbtr CO '0123456789. ' AND
+     gs_csv-abrmenge CO '0123456789. '.
+
+  ELSE.
+
+*    err_count += 1.
+*    MESSAGE s014(zgbc_mess) INTO gs_err-err_message.
+*    MOVE-CORRESPONDING gs_csv TO gs_err.
+*    MOVE: err_count TO gs_err-progr.
+*    gs_err-data = sy-datum.
+*    gs_err-ora = sy-uzeit.
+*    gs_err-progr = err_count.
+*    gs_err-err_number = '014'.
+*    gs_err-err_type = 'E'.
+*    gs_err-err_row = lv_tabx.
+*    gs_err-err_id = 'ZGBC_MESS'.
+*    gs_err-icon = '@5C@'.
+*    APPEND gs_err TO gt_err.
+*    CLEAR: gs_err.
+
+    MESSAGE s014(zgbc_mess) INTO gs_err-err_message.
+    gs_err-err_number = '014'.
+    PERFORM process_err USING gs_csv
+                              err_count
+                             lv_tabx
+                    CHANGING gt_err.
+  ENDIF.
+
+  APPEND gs_csv TO gt_csv.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_date_param
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_date_param USING i_date TYPE char10
+                   CHANGING c_rc TYPE sy-subrc
+                            cs_message TYPE bapiret2.
+
+  DATA: l_endabrpe TYPE d.
+
+  CLEAR: c_rc,cs_message.
+
+  l_endabrpe = i_date.
+
+  CALL FUNCTION 'DATE_CHECK_PLAUSIBILITY'
+    EXPORTING
+      date                      = l_endabrpe
+    EXCEPTIONS
+      plausibility_check_failed = 1
+      OTHERS                    = 2.
+  IF sy-subrc <> 0.
+    c_rc = 4.
+
+    IF sy-msgid IS NOT INITIAL.
+      MESSAGE ID sy-msgid TYPE 'S' NUMBER sy-msgno
+      WITH sy-msgv1 sy-msgv2   sy-msgv3  sy-msgv4
+      INTO cs_message-message .
+    ELSE.
+      MESSAGE s015(zgbc_mess) INTO cs_message-message WITH i_date.
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form select
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM select.
+
+  IF gt_csv IS NOT INITIAL.
+    SELECT idtreno ext_ui stato
+     FROM zgbchead
+     INTO TABLE gt_zgbchead
+     FOR ALL ENTRIES IN gt_csv
+     WHERE idtreno = gt_csv-idtreno AND
+           stato = lc_stato.
+  ENDIF.
+  SELECT belzart
+    FROM te835
+    INTO TABLE gt_belzart.
+
+  SELECT mwskz
+    FROM t007a
+    INTO TABLE gt_mwskz.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check.
+
+  LOOP AT gt_csv INTO gs_csv.
+    CLEAR: lv_tabx, err_count.
+    err_count = 1.
+    lv_tabx = sy-tabix.
+    lv_tabx += 1.
+
+    READ TABLE gt_zgbchead INTO gs_zgbchead WITH KEY idtreno = gs_csv-idtreno.
+    IF sy-subrc <> 0.
+      err_count += 1.
+      MESSAGE s009(zgbc_mess) INTO gs_err-err_message.
+      MOVE-CORRESPONDING gs_csv TO gs_err.
+      MOVE err_count TO gs_err-progr.
+      gs_err-err_number = '009'.
+      gs_err-icon = '@5C@'.
+      gs_err-err_type = 'E'.
+      gs_err-err_row = lv_tabx.
+      gs_err-err_id = 'ZGBC_MESS'.
+      APPEND gs_err TO gt_err.
+    ENDIF.
+
+    READ TABLE gt_mwskz INTO gs_mwskz WITH KEY mwskz = gs_csv-mwskz.
+    IF sy-subrc <> 0.
+      err_count += 1.
+      MESSAGE s008(zgbc_mess) INTO gs_err-err_message.
+      MOVE-CORRESPONDING gs_csv TO gs_err.
+      MOVE err_count TO gs_err-progr.
+      gs_err-err_number = '008'.
+      gs_err-icon = '@5C@'.
+      gs_err-err_type = 'E'.
+      gs_err-err_row = lv_tabx.
+      gs_err-err_id = 'ZGBC_MESS'.
+      APPEND gs_err TO gt_err.
+    ENDIF.
+
+    READ TABLE gt_belzart INTO gs_belzart WITH KEY belzart = gs_csv-belzart.
+    IF sy-subrc <> 0.
+      err_count += 1.
+      MESSAGE s010(zgbc_mess) INTO gs_err-err_message.
+      MOVE-CORRESPONDING gs_csv TO gs_err.
+      MOVE err_count TO gs_err-progr.
+      gs_err-err_number = '010'.
+      gs_err-icon = '@5C@'.
+      gs_err-err_type = 'E'.
+      gs_err-err_row = lv_tabx.
+      gs_err-err_id = 'ZGBC_MESS'.
+      APPEND gs_err TO gt_err.
+    ENDIF.
+
+*--------CONTROLLO SU TUTTO POI CASCATA PER ASSEGNARE IL MESSAGGIO CORRETTO--------*
+    IF gs_csv-idtreno <> gs_zgbchead-idtreno OR
+       gs_csv-begabrpe > gs_csv-endabrpe     OR
+       gs_csv-mwskz   <> gs_mwskz-mwskz      OR
+       gs_csv-belzart <> gs_belzart-belzart  OR
+       gs_csv-ext_ui  <> gs_zgbchead-ext_ui .
+
+      IF gs_csv-begabrpe > gs_csv-endabrpe.
+        err_count += 1.
+        MESSAGE s007(zgbc_mess) INTO gs_err-err_message.
+        MOVE-CORRESPONDING gs_csv TO gs_err.
+        MOVE err_count TO gs_err-progr.
+        gs_err-err_number = '007'.
+        gs_err-icon = '@5C@'.
+        gs_err-err_type = 'E'.
+        gs_err-err_row = lv_tabx.
+        gs_err-err_id = 'ZGBC_MESS'.
+        APPEND gs_err TO gt_err.
+      ENDIF.
+
+      IF gs_csv-ext_ui <> gs_zgbchead-ext_ui.
+        err_count += 1.
+        MESSAGE s012(zgbc_mess) INTO gs_err-err_message WITH gs_zgbchead-ext_ui.
+        MOVE-CORRESPONDING gs_csv TO gs_err.
+        MOVE err_count TO gs_err-progr.
+        gs_err-icon = '@5C@'.
+        gs_err-err_number = '012'.
+        gs_err-err_type = 'E'.
+        gs_err-err_row = lv_tabx.
+        gs_err-err_id = 'ZGBC_MESS'.
+        APPEND gs_err TO gt_err.
+      ENDIF.
+
+    ELSE.
+      MOVE-CORRESPONDING gs_csv TO gs_zgbcmb.
+      gs_zgbcmb-icon = '@5B@'.
+      APPEND gs_zgbcmb TO gt_zgbcmb.
+      CLEAR gs_zgbcmb.
+
+    ENDIF.
+  ENDLOOP.
+
+  SORT gt_zgbcmb BY idtreno.
+  CLEAR gs_err.
+  err_count = 1.
+
+  LOOP AT gt_err INTO gs_err.
+    READ TABLE gt_zgbcmb INTO gs_zgbcmb WITH KEY idtreno = gs_err-idtreno BINARY SEARCH.
+    IF sy-subrc = 0.
+
+      lv_tabix = sy-tabix.
+      gs_err-progr = err_count.
+      MOVE-CORRESPONDING gs_zgbcmb TO gs_err.
+      gs_err-icon = '@5C@'.
+      MESSAGE s017(zgbc_mess) INTO gs_err-err_message WITH gs_zgbcmb-idtreno.
+      gs_err-err_number = '017'.
+      gs_err-err_type = 'E'.
+      gs_err-err_row = lv_tabx.
+      gs_err-err_id = 'ZGBC_MESS'.
+      APPEND gs_err TO gt_err.
+      DELETE gt_zgbcmb INDEX lv_tabix.
+
+    ENDIF.
+  ENDLOOP.
+
+  SORT gt_err BY idtreno ASCENDING belzart ASCENDING progr ASCENDING.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GT_OUTAB
+*&---------------------------------------------------------------------*
+FORM alv TABLES it_table TYPE table.
+
+  DATA:
+    lo_ref        TYPE REF TO cl_salv_table,
+    lo_ref_func   TYPE REF TO cl_salv_functions_list,
+    lo_selections TYPE REF TO cl_salv_selections,
+    lo_columns    TYPE REF TO cl_salv_columns_table,
+    lo_cols       TYPE REF TO cl_salv_columns,
+    lo_column_h   TYPE REF TO cl_salv_column_list,
+    lo_column     TYPE REF TO cl_salv_column,
+    lo_layout     TYPE REF TO cl_salv_layout,
+    ls_key        TYPE salv_s_layout_key,
+    ls_row        TYPE i,
+    lt_rows       TYPE salv_t_row.
+
+  TRY.
+      CALL METHOD cl_salv_table=>factory
+        EXPORTING
+          list_display = if_salv_c_bool_sap=>false
+        IMPORTING
+          r_salv_table = lo_ref
+        CHANGING
+          t_table      = it_table[].
+    CATCH cx_salv_msg .
+  ENDTRY.
+
+*     attivazione dei pulsanti
+  lo_ref_func = lo_ref->get_functions( ).
+  lo_ref_func->set_all( ).
+
+*     selezione dei campi
+  lo_selections = lo_ref->get_selections( ).
+  lo_selections->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+*     modifica della fieldcat
+  lo_cols = lo_ref->get_columns( ).
+  lo_cols->set_optimize( ).
+  TRY.
+
+      lo_column = lo_cols->get_column( 'MANDT' ).
+      lo_column->set_technical( if_salv_c_bool_sap=>true ).
+
+*      "Cambio etichetta
+      lo_column = lo_cols->get_column( 'ICON' ).
+*      "Modifica Etichetta
+      lo_column->set_long_text( 'Esito' ).
+      lo_column->set_medium_text( 'Esito' ).
+      lo_column->set_short_text( 'Esito' ).
+
+*      "Cambio etichetta
+      lo_column = lo_cols->get_column( 'PROGR' ).
+*      "Modifica Etichetta
+      lo_column->set_long_text( 'Progressivo' ).
+      lo_column->set_medium_text( 'Progressivo' ).
+      lo_column->set_short_text( 'Progr' ).
+
+
+    CATCH cx_salv_not_found.
+  ENDTRY.
+*   richiamo e salvataggio layout
+
+  lo_layout = lo_ref->get_layout( ).
+  ls_key-report = sy-repid.
+  lo_layout->set_key( ls_key ).
+  lo_layout->set_save_restriction( if_salv_c_layout=>restrict_none ).
+
+*     stampa alv
+  CALL METHOD lo_ref->display.
+
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*& Form out_tab
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM out_tab.
+
+  APPEND LINES OF gt_err TO gt_outab.
+  LOOP AT gt_zgbcmb INTO gs_zgbcmb.
+    CLEAR: gs_outab, lv_tabx.
+    lv_tabx = sy-tabix.
+    lv_tabx += 1.
+    MESSAGE s018(zgbc_mess) INTO gs_outab-err_message.
+    gs_outab-err_number = '18'.
+    gs_outab-err_id = 'ZGBC_MESS'.
+    gs_outab-err_row = lv_tabx.
+    gs_outab-err_type = 'S'.
+    MOVE-CORRESPONDING gs_zgbcmb TO gs_outab.
+    APPEND gs_outab TO gt_outab.
+  ENDLOOP.
+  SORT gt_outab BY idtreno ASCENDING belzart ASCENDING progr ASCENDING.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form process_err
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_CSV
+*&      --> ERR_COUNT
+*&      --> LV_TABX
+*&      <-- GS_ERR
+*&---------------------------------------------------------------------*
+FORM process_err  USING    p_gs_csv
+                           p_err_count
+                           p_lv_tabx
+                  CHANGING p_gt_err LIKE gt_err.
+
+
+  p_err_count += 1.
+  MOVE: p_err_count TO gs_err-progr.
+  MOVE-CORRESPONDING p_gs_csv TO gs_err.
+  gs_err-err_type = 'E'.
+  gs_err-data = sy-datum.
+  gs_err-ora = sy-uzeit.
+  gs_err-err_id = 'ZGBC_MESS'.
+  gs_err-err_row = p_lv_tabx.
+  gs_err-icon = '@5C@'.
+  APPEND gs_err TO p_gt_err.
+  CLEAR: gs_err.
+
+ENDFORM.
