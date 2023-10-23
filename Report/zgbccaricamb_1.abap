@@ -334,3 +334,186 @@ FORM contr.
     ENDIF.
   ENDLOOP.
 ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Include          ZGBCCARICAMB_TOP
+*&---------------------------------------------------------------------*
+
+*CONSTANTS gc_stato TYPE string VALUE '01'.
+CONSTANTS gc_stato TYPE string VALUE '02'. "INVIATO
+*CONSTANTS gc_stato TYPE string VALUE '03'. DA CARICARE
+*CONSTANTS gc_stato TYPE string VALUE '09'. ANNULATE PRE-CARICAMENTO
+*CONSTANTS gc_stato TYPE string VALUE '10'. ERRORE CREAZIONE BILLING
+
+DATA: gv_tabix  TYPE sy-tabix,
+      gv_tabx   TYPE sy-tabix,
+      gv_string TYPE string.
+
+TYPES: BEGIN OF ty_zgbchead,
+         idtreno TYPE zgbchead-idtreno,
+         ext_ui  TYPE zgbchead-ext_ui,
+         stato   TYPE zgbchead-stato,
+       END OF ty_zgbchead,
+       tt_zgbchead TYPE TABLE OF ty_zgbchead.
+
+TYPES: BEGIN OF ty_mwskz,
+         mwskz TYPE t007a-mwskz,
+       END OF ty_mwskz,
+       tt_mwskz TYPE TABLE OF ty_mwskz.
+
+TYPES: BEGIN OF ty_belzart,
+         belzart TYPE te835-belzart,
+       END OF ty_belzart,
+       tt_belzart TYPE TABLE OF ty_belzart.
+
+TYPES: BEGIN OF ty_head,
+         idtreno     TYPE c LENGTH 15,
+         ext_ui      TYPE c LENGTH 15,
+         begabrpe    TYPE c LENGTH 15,
+         endabrpe    TYPE c LENGTH 15,
+         belzart     TYPE c LENGTH 15,
+         zonennr     TYPE c LENGTH 15,
+         preisbtr    TYPE c LENGTH 15,
+         abrmenge    TYPE c LENGTH 15,
+         total_amnt  TYPE c LENGTH 15,
+         mwskz       TYPE c LENGTH 15,
+         progressivo TYPE c LENGTH 15,
+       END OF ty_head,
+       tt_head TYPE TABLE OF ty_head.
+
+TYPES: BEGIN OF ty_err.
+TYPES: icon TYPE icon_d.
+       INCLUDE TYPE zgbccarlog.
+TYPES: END OF ty_err,
+tt_err TYPE TABLE OF ty_err.
+
+TYPES: BEGIN OF ty_csv.
+TYPES:
+  filename TYPE eps2filnam.
+  INCLUDE TYPE zgbc_billing_file_char_st.
+TYPES: END OF ty_csv,
+tt_csv TYPE TABLE OF ty_csv.
+
+TYPES: BEGIN OF ty_zgbcmb.
+TYPES:
+  icon  TYPE icon_d,
+  tabix TYPE sy-tabix.
+  INCLUDE TYPE zgbcmb.
+TYPES:
+  END OF ty_zgbcmb,
+  tt_zgbcmb TYPE TABLE OF ty_zgbcmb.
+
+TYPES: BEGIN OF ty_outab.
+TYPES:
+  icon TYPE icon_d.
+  INCLUDE TYPE zgbccarlog.
+TYPES: END OF ty_outab,
+tt_outab TYPE TABLE OF ty_outab.
+
+TYPES: BEGIN OF ty_char.
+TYPES:
+  icon            TYPE icon_d,
+  mandt           TYPE zgbccarlog-mandt,
+  data            TYPE zgbccarlog-data,
+  ora             TYPE zgbccarlog-ora,
+  idtreno         TYPE zgbccarlog-idtreno,
+  belzeile(6),
+  count_err(10),
+  ext_ui          TYPE zgbccarlog-ext_ui,
+  begabrpe        TYPE zgbccarlog-begabrpe,
+  endabrpe        TYPE zgbccarlog-endabrpe,
+  belzart         TYPE zgbccarlog-belzart,
+  zonennr(3),
+  preisbtr(17),
+  abrmenge(31),
+  total_amnt(13),
+  mwskz           TYPE zgbccarlog-mwskz,
+  progressivo(16),
+  filename        TYPE zgbccarlog-filename,
+  createdby       TYPE zgbccarlog-createdby,
+  createdat       TYPE zgbccarlog-createdat,
+  createdtime     TYPE zgbccarlog-createdtime,
+  err_type        TYPE zgbccarlog-err_type,
+  err_id          TYPE zgbccarlog-err_id,
+  err_number(3),
+  err_message     TYPE zgbccarlog-err_message,
+  err_message_v1  TYPE zgbccarlog-err_message_v1,
+  err_message_v2  TYPE zgbccarlog-err_message_v2,
+  err_message_v3  TYPE zgbccarlog-err_message_v3,
+  err_message_v4  TYPE zgbccarlog-err_message_v4,
+  err_row(10),
+  field           TYPE zgbccarlog-field.
+TYPES: END OF ty_char,
+tt_char TYPE TABLE OF ty_char.
+
+
+DATA: gt_idtreno TYPE TABLE OF zgbccarlog-idtreno,
+      gs_idtreno TYPE zgbccarlog-idtreno.
+
+DATA: gs_csv      TYPE  ty_csv,
+      gs_file     TYPE  string,
+      gs_zgbchead TYPE  ty_zgbchead,
+      gs_zgbcmb   TYPE  ty_zgbcmb,
+      gs_err      TYPE  ty_err,
+      gs_err_2    TYPE  ty_err,
+      gs_mwskz    TYPE  ty_mwskz,
+      gs_belzart  TYPE  ty_belzart,
+      gs_outab    TYPE  ty_outab,
+      gs_head     TYPE  ty_head,
+      gs_zgbparam TYPE STANDARD TABLE OF zgbparam.
+
+DATA: gt_csv      TYPE tt_csv,
+      gt_file     TYPE TABLE OF string,
+      gt_zgbchead TYPE  tt_zgbchead,
+      gt_zgbcmb   TYPE  tt_zgbcmb,
+      gt_err      TYPE  tt_err,
+      gt_err_2    TYPE  tt_err,
+      gt_mwskz    TYPE  tt_mwskz,
+      gt_belzart  TYPE  tt_belzart,
+      gt_outab    TYPE  tt_outab,
+      gt_head     TYPE  tt_head,
+      gt_zgbparam TYPE STANDARD TABLE OF zgbparam,
+      gt_char     TYPE tt_char.
+
+DATA: g_rc        TYPE sy-subrc,
+      gs_message  TYPE bapiret2,
+      gv_esito(2).
+
+DATA: gv_transfer_path_err  TYPE rlgrap-filename,
+      gv_transfer_path_hist TYPE rlgrap-filename,
+      gv_idtreno            TYPE ty_csv-idtreno.
+
+DATA: go_descr_ref TYPE REF TO cl_abap_structdescr.
+
+DATA: BEGIN OF gs_dd04t,
+        rollname   TYPE rollname,
+        ddlanguage TYPE ddlanguage,
+        as4local   TYPE as4local,
+        as4vers    TYPE as4vers,
+        scrtext_l  TYPE scrtext_l,
+      END OF gs_dd04t,
+
+      gt_dd04t     LIKE STANDARD TABLE OF gs_dd04t,
+      gt_compdescr TYPE STANDARD TABLE OF abap_compdescr.
+
+FIELD-SYMBOLS: <fs_dd04t>     LIKE LINE OF gt_dd04t,
+               <fs_compdescr> TYPE abap_compdesc
+
+
+
+*&---------------------------------------------------------------------*
+*& Include          ZGBCCARICAMB_SCREEN
+*&---------------------------------------------------------------------*
+
+SELECTION-SCREEN BEGIN OF BLOCK b0 WITH FRAME TITLE TEXT-t00.
+
+  SELECTION-SCREEN BEGIN OF BLOCK b1.
+    PARAMETERS: rb_local  RADIOBUTTON GROUP r1 USER-COMMAND com1 DEFAULT 'X' MODIF ID 001,
+                rb_serv   RADIOBUTTON GROUP r1 MODIF ID 002.
+    PARAMETERS: p_pathl TYPE string DEFAULT 'C:\' LOWER CASE OBLIGATORY MODIF ID 003.
+    PARAMETERS: p_paths TYPE string DEFAULT '/usr/usrsap/I4S/billcrea/inbound' LOWER CASE OBLIGATORY MODIF ID 004.
+  SELECTION-SCREEN END OF BLOCK b1.
+
+  PARAMETERS p_fname TYPE string MODIF ID 005.
+
+SELECTION-SCREEN END OF BLOCK b0.

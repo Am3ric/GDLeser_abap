@@ -414,6 +414,31 @@ FORM check.
 
   SORT gt_err BY idtreno ASCENDING belzart ASCENDING progr ASCENDING.
 
+    ELSE.
+      DATA ls_zgbccarlog TYPE zgbccarlog.
+
+      SELECT idtreno
+       FROM zgbccarlog
+        INTO ls_zgbccarlog
+        WHERE idtreno = gs_err-idtreno.
+      ENDSELECT.
+      IF sy-subrc <> 0.
+
+        MOVE-CORRESPONDING gs_err TO ls_zgbccarlog.
+        INSERT zgbccarlog FROM ls_zgbccarlog.
+        IF sy-subrc = 0.
+          COMMIT WORK.
+        ELSE.
+          ROLLBACK WORK.
+        ENDIF.
+      ELSE.
+        MESSAGE s011(zgbc_mess) WITH gs_err-idtreno.
+        PERFORM process_err USING gs_csv
+                err_count
+               gv_tabx
+      CHANGING gt_err.
+      ENDIF.
+
 ENDFORM.
 *&---------------------------------------------------------------------*
 *& Form alv

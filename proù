@@ -1,0 +1,184 @@
+*&---------------------------------------------------------------------*
+*& Include          ZGBCCARICAMB_FORM
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form loc file_file
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM loc_file .
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      filename                = lv_file
+      filetype                = 'ASC'
+      has_field_separator     = ';'
+    TABLES
+      data_tab                = gt_file
+    EXCEPTIONS
+      file_open_error         = 1
+      file_read_error         = 2
+      no_batch                = 3
+      gui_refuse_filetransfer = 4
+      invalid_type            = 5
+      no_authority            = 6
+      unknown_error           = 7
+      bad_data_format         = 8
+      header_not_allowed      = 9
+      separator_not_allowed   = 10
+      header_too_long         = 11
+      unknown_dp_error        = 12
+      access_denied           = 13
+      dp_out_of_memory        = 14
+      disk_full               = 15
+      dp_timeout              = 16
+      OTHERS                  = 17.
+  IF sy-subrc <> 0.
+    MESSAGE s208(00) WITH TEXT-e02 DISPLAY LIKE 'E'.
+    STOP.
+  ELSE.
+    LOOP AT gt_file INTO gs_file.
+      IF sy-tabix = 1.
+        CONTINUE.
+      ENDIF.
+
+      SPLIT gs_file AT ';'
+      INTO
+      gs_csv-idtreno
+      gs_csv-ext_ui
+      gs_csv-begabrpe
+      gs_csv-endabrpe
+      gs_csv-belzart
+      gs_csv-zonennr
+      gs_csv-preisbtr
+      gs_csv-abrmenge
+      gs_csv-mwskz.
+      APPEND gs_csv TO gt_csv.
+
+    ENDLOOP.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form serv_file
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM serv_file .
+
+  OPEN DATASET lv_file FOR INPUT IN TEXT MODE ENCODING DEFAULT.
+  IF sy-subrc IS INITIAL.
+    DO.
+      READ DATASET lv_file INTO gs_file.
+      IF sy-subrc IS INITIAL.
+        IF sy-index EQ 1.
+          CONTINUE.
+        ENDIF.
+        SPLIT gs_file AT ';'
+      INTO
+      gs_csv-idtreno
+      gs_csv-ext_ui
+      gs_csv-begabrpe
+      gs_csv-endabrpe
+      gs_csv-belzart
+      gs_csv-zonennr
+      gs_csv-preisbtr
+      gs_csv-abrmenge
+      gs_csv-mwskz.
+
+        IF gs_csv-begabrpe > gs_csv-endabrpe.
+*          Date non coerenti con il treno letture
+        ENDIF.
+        APPEND gs_csv TO gt_csv.
+
+
+*      ELSE.
+*        EXIT.
+      ENDIF.
+    ENDDO.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form select
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM select .
+
+  SELECT *
+    FROM zgbchead
+    INTO TABLE gt_zgbchead
+    FOR ALL ENTRIES IN gt_csv
+    WHERE idtreno = gt_csv-idtreno OR
+           ext_ui = gt_csv-ext_ui.
+
+  SELECT *
+    FROM zgbcmb
+    INTO TABLE gt_zgbcmb
+    FOR ALL ENTRIES IN gt_csv
+    WHERE idtreno = gt_csv-idtreno.
+
+  IF sy-subrc = 0.
+
+*       FILE per &Identificativo& già caricato
+
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form contr
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM contr.
+
+
+
+  LOOP AT gt_csv INTO gs_csv.
+
+
+*    IF gs_zgbchead-idtreno IS INITIAL.
+*
+**      Identificativo treno non esistente
+*      IF gs_csv-endabrpe < gs_csv-begabrpe.
+**Date non coerenti con il treno letture
+*        IF gs_csv-mwskz IS INITIAL.
+*
+**        dentificativo treno associato al PDR &PDR& associato in IS-U
+*
+*        ENDIF.
+*      ENDIF.
+*    ENDIF.
+
+  move:
+      gs_csv-idtreno    to gs_zgbcmb-idtreno ,
+      gs_csv-ext_ui     to gs_zgbcmb-ext_ui  ,
+      gs_csv-begabrpe   to gs_zgbcmb-begabrpe,
+      gs_csv-endabrpe   to gs_zgbcmb-endabrpe,
+      gs_csv-belzart    to gs_zgbcmb-belzart ,
+      gs_csv-zonennr    to gs_zgbcmb-zonennr ,
+      gs_csv-preisbtr   to gs_zgbcmb-preisbtr.
+*      gs_csv-abrmenge   to gs_zgbcmb-abrmenge,
+*      gs_csv-mwskz      to gs_zgbcmb-mwskz   .
+    APPEND gs_zgbcmb    TO gt_zgbcmb.
+
+
+
+
+  ENDLOOP.
+
+
+
+ENDFORM.
